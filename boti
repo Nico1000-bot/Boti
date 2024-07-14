@@ -1,0 +1,415 @@
+discord.py
+flask
+import random
+import discord
+from discord.ext import commands
+import os
+from googletrans import Translator, LANGUAGES
+import wikipedia
+import asyncio
+from googleapiclient.discovery import build
+from flask import Flask
+from threading import Thread
+
+
+
+# Erstelle eine Instanz von Intents
+intents = discord.Intents.default()
+intents.members = True  # Erlaube dem Bot, Mitgliedsereignisse zu empfangen
+intents.message_content = True 
+intents.guilds = True
+intents.voice_states = True
+
+# Erstelle eine Instanz des Bots mit Intents
+client = commands.Bot(command_prefix='!', intents=intents)
+
+# Setze die Sprache für Wikipedia auf Deutsch
+wikipedia.set_lang("de")
+
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "I am alive!"
+
+def run():
+    app.run(host='0.0.0.0', port=8080)
+
+def keep_alive():
+    server = Thread(target=run)
+    server.start()
+
+# Definiere die Funktion website_check
+def website_check():
+    import requests
+    url = "https://example.com"  # Ersetze durch die URL, die du überwachen möchtest
+    response = requests.get(url)
+    if response.status_code == 200:
+        print(f"Die Website {url} ist erreichbar!")
+    else:
+        print(f"Die Website {url} ist nicht erreichbar. Statuscode: {response.status_code}")
+
+# Erstelle und starte den Thread für die Website-Überprüfung
+website_thread = Thread(target=website_check)
+website_thread.start()
+
+
+
+# Event: Der Bot ist bereit
+@client.event
+async def on_ready():
+    print(f'Wir haben uns als {client.user} eingeloggt')
+
+# Event: Ein neues Mitglied ist dem Server beigetreten
+@client.event
+async def on_member_join(member):
+    # Die Rolle, die dem neuen Mitglied zugewiesen werden soll
+    role_name = "Mitglied"  # Name der Rolle, die zugewiesen werden soll
+    role = discord.utils.get(member.guild.roles, name=gay)
+    if role:
+        await member.add_roles(role)
+        print(f'Rolle "{name}" wurde dem Mitglied {member} zugewiesen')
+    else:
+        print(f'Rolle "{name}" nicht gefunden')
+
+    # Sende eine Willkommensnachricht
+    channel_name = "willkommen"  # Name des Kanals, in den die Willkommensnachricht gesendet werden soll
+    willkommen_kanal = discord.utils.get(member.guild.text_channels, name=Allgemein)
+    if willkommen_kanal:
+        await willkommen_kanal.send(f'Willkommen auf dem Server, {member.mention}!')
+    else:
+        print(f'Willkommenskanal "{channel_name}" nicht gefunden')
+
+# Event: Der Bot empfängt eine Nachricht
+@client.event
+async def on_message(message):
+    # Ignoriere Nachrichten vom Bot selbst
+    if message.author == client.user:
+        return
+
+    # Definiere ein Wörterbuch mit Schlüssel-Wert-Paaren für Antworten
+    antworten = {
+        'hallo': 'Hallo!',
+        'wie geht es dir?': 'Mir geht es gut, danke!',
+        'was machst du?': 'Ich helfe Menschen mit ihren Fragen.',
+        'tschüss': 'Auf Wiedersehen!',
+        'penis': 'in dich rein',
+        'johann': 'ist ein hurensohn',
+        'ficken': 'komm in den discord',
+        'wer ist ein hurensohn': 'Johann',
+        'jakob': 'ist ein jude ',
+    }
+
+    # Überprüfe, ob die Nachricht einen der definierten Schlüssel enthält
+    for schlüssel, antwort in antworten.items():
+        if schlüssel in message.content.lower():
+            await message.channel.send(antwort)
+            break
+
+    # Befehle verarbeiten
+    await client.process_commands(message)
+
+# Befehl: Kopf oder Zahl
+@client.command()
+async def coinflip(ctx):
+    result = random.choice(['Kopf', 'Zahl'])
+    await ctx.send(f'Du hast {result} geworfen!')
+
+# Befehl: 8-Ball
+@client.command(aliases=['8ball'])
+async def eight_ball(ctx, *, question: str):
+    responses = [
+        "Ja, definitiv.",
+        "Oh ja, darauf kannst du dich verlassen.",
+        "Ohne Zweifel.",
+        "Ja, so sieht es aus.",
+        "Sieht gut aus!",
+        "Ich denke schon.",
+        "Sicher.",
+        "Ich bin mir nicht sicher, versuche es später noch einmal.",
+        "Besser sag ich jetzt nichts dazu.",
+        "Ich kann das nicht vorhersagen.",
+        "Konzentriere dich und frage noch einmal.",
+        "Das ist zweifelhaft.",
+        "Meine Quellen sagen nein.",
+        "Sehr zweifelhaft."
+    ]
+    await ctx.send(f'Frage: {question}\nAntwort: {random.choice(responses)}')
+
+# Befehl: Wikipedia-Suche
+@client.command()
+async def wiki(ctx, *, query: str):
+    try:
+        summary = wikipedia.summary(query, sentences=3)
+        await ctx.send(summary)
+    except wikipedia.exceptions.DisambiguationError as e:
+        await ctx.send(f"Begriffsklärungsseite gefunden: {e.options}")
+    except wikipedia.exceptions.PageError:
+        await ctx.send("Seite nicht gefunden.")
+
+# Befehl: Countdown
+countdown_active = False
+
+@client.command()
+async def countdown(ctx, seconds: int):
+    global countdown_active
+    countdown_active = True  # Setze den Countdown-Status auf aktiv
+
+    if seconds > 0:
+        await ctx.send(f"Countdown gestartet: {seconds} Sekunden")
+        while seconds and countdown_active:
+            await asyncio.sleep(1)
+            seconds -= 1
+            await ctx.send(f"{seconds} Sekunden verbleiben...")
+        if countdown_active:  # Überprüfe, ob der Countdown nicht gestoppt wurde
+            await ctx.send("Countdown beendet!")
+        else:
+            await ctx.send("Countdown gestoppt!")
+    else:
+        await ctx.send("Bitte gebe eine positive Zahl ein.")
+
+@client.command()
+async def stop(ctx):
+    global countdown_active
+    countdown_active = False  # Setze den Countdown-Status auf nicht aktiv
+    await ctx.send("Countdown wird gestoppt...")
+
+
+
+# Befehl: Übersetzung
+@client.command()
+async def translate(ctx, target_lang: str, *, text: str):
+    translator = Translator()
+    try:
+        translation = translator.translate(text, dest=target_lang)
+        await ctx.send(f"{translation.origin} -> {translation.text}")
+    except Exception as e:
+        await ctx.send(f"Fehler bei der Übersetzung: {str(e)}")
+
+# Befehl: Ratespiel
+number_to_guess = None
+
+@client.command()
+async def start_guess(ctx):
+    global number_to_guess
+    number_to_guess = random.randint(1, 100)
+    await ctx.send('Ich habe mir eine Zahl zwischen 1 und 100 ausgedacht. Versuche, sie zu erraten!')
+
+@client.command()
+async def guess(ctx, number: int):
+    global number_to_guess
+    if number_to_guess is None:
+        await ctx.send('Das Spiel wurde noch nicht gestartet. Verwende !start_guess, um das Spiel zu starten.')
+    elif number < number_to_guess:
+        await ctx.send('Zu niedrig! Versuch es nochmal.')
+    elif number > number_to_guess:
+        await ctx.send('Zu hoch! Versuch es nochmal.')
+    else:
+        await ctx.send(f'Glückwunsch! Du hast die Zahl {number_to_guess} erraten!')
+        number_to_guess = None
+
+# Befehl: Tic-Tac-Toe
+games = {}
+
+def check_winner(board):
+    win_conditions = [
+        [board[0], board[1], board[2]],
+        [board[3], board[4], board[5]],
+        [board[6], board[7], board[8]],
+        [board[0], board[3], board[6]],
+        [board[1], board[4], board[7]],
+        [board[2], board[5], board[8]],
+        [board[0], board[4], board[8]],
+        [board[2], board[4], board[6]]
+    ]
+    for condition in win_conditions:
+        if condition[0] == condition[1] == condition[2] and condition[0] != ":white_large_square:":
+            return condition[0]
+    return None
+
+@client.command()
+async def start_ttt(ctx):
+    games[ctx.channel.id] = {
+        "board": [":white_large_square:" for _ in range(9)],
+        "turn": "X"
+    }
+    board = "\n".join([" ".join(games[ctx.channel.id]["board"][i:i+3]) for i in range(0, 9, 3)])
+    await ctx.send(f"Neues Tic-Tac-Toe-Spiel gestartet!\n{board}\nX ist am Zug. Benutze !move <position> um zu spielen (Positionen sind 1-9).")
+
+@client.command()
+async def move(ctx, pos: int):
+    if ctx.channel.id not in games:
+        await ctx.send("Es läuft kein Tic-Tac-Toe-Spiel in diesem Kanal. Starte ein neues Spiel mit !start_ttt.")
+        return
+
+    game = games[ctx.channel.id]
+    pos -= 1
+
+    if game["board"][pos] != ":white_large_square:":
+        await ctx.send("Dieses Feld ist bereits belegt. Wähle ein anderes Feld.")
+        return
+
+    game["board"][pos] = "X" if game["turn"] == "X" else "O"
+    game["turn"] = "O" if game["turn"] == "X" else "X"
+    board = "\n".join([" ".join(game["board"][i:i+3]) for i in range(0, 9, 3)])
+    winner = check_winner(game["board"])
+
+    if winner:
+        await ctx.send(f"{board}\n{winner} hat gewonnen!")
+        del games[ctx.channel.id]
+    elif ":white_large_square:" not in game["board"]:
+        await ctx.send(f"{board}\nUnentschieden!")
+        del games[ctx.channel.id]
+    else:
+        await ctx.send(f"{board}\n{game['turn']} ist am Zug.")
+
+async def on_ready():
+    print(f'Wir haben uns als {client.user} eingeloggt')
+
+# Befehl: Schere-Stein-Papier
+@client.command()
+async def rps(ctx, choice: str):
+    rps_choices = ['Schere', 'Stein', 'Papier']
+    bot_choice = random.choice(rps_choices)
+
+    if choice.capitalize() not in rps_choices:
+        await ctx.send("Ungültige Wahl! Bitte wähle zwischen 'Schere', 'Stein' oder 'Papier'.")
+        return
+
+    if choice.capitalize() == bot_choice:
+        result = "Unentschieden!"
+    elif (choice.capitalize() == 'Schere' and bot_choice == 'Papier') or \
+         (choice.capitalize() == 'Stein' and bot_choice == 'Schere') or \
+         (choice.capitalize() == 'Papier' and bot_choice == 'Stein'):
+        result = "Du gewinnst!"
+    else:
+        result = "Du verlierst!"
+
+    await ctx.send(f'Du wählst: {choice.capitalize()}\nBot wählt: {bot_choice}\nErgebnis: {result}')
+
+words = ["haus", "auto", "baum", "schule", "computer", "programmieren", "discord", "python", "entwickler", "server",
+         "spielen", "musik", "kunst", "schreiben", "lesen", "kochen", "katze", "hund", "tisch", "stuhl",
+         "fenster", "tür", "stadt", "land", "meer", "berge", "blume", "regenbogen", "sonne", "mond",
+         "sterne", "film", "buch", "fernsehen", "handy", "zahlen", "farben", "leben", "liebe", "glück"
+,"fenster", "tür", "bett", "decke", "kissen", "lampe", "schrank", "kühlschrank", "herd", "ofen",
+        "spülmaschine", "teller", "tasse", "besteck", "messer", "gabel", "löffel", "schüssel", "topf", "pfanne",
+        "bad", "dusche", "spiegel", "waschbecken", "toilette", "bürste", "zahnpasta", "seife", "handtuch", "kleidung",
+        "schuhe", "socken", "jacke", "hose", "rock", "hemd", "pulli", "mantel", "tasche", "geldbörse",
+        "telefon", "computer", "tablet", "fernseher", "radio", "kopfhörer", "kamera", "drucker", "scanner", "maus",
+        "garten", "rasen", "blumen", "baum", "hecke", "strauch", "beet", "gartenhaus", "pool", "terrasse",
+        "auto", "fahrrad", "motorrad", "bus", "zug", "flugzeug", "schiff", "boot", "tankstelle", "straße",
+        "brücke", "kreuzung", "ampel", "parkplatz", "tankstelle", "bank", "apotheke", "krankenhaus", "arzt", "krankenschwester",
+        "schule", "kindergarten", "universität", "bibliothek", "klassenzimmer", "lehrer", "schüler", "prüfung", "noten", "ferien",
+        "supermarkt", "bäckerei", "metzgerei", "gemüseladen", "kaufhaus", "markt", "einkaufswagen", "kasse", "regal", "produkt",
+        "buchhandlung", "bibliothek", "buch", "roman", "sachbuch", "zeitschrift", "magazin", "verlag", "autor", "leser",
+        "restaurant", "café", "bar", "kneipe", "biergarten", "tisch", "stuhl", "kellner", "speisekarte", "bestellung",
+        "musik", "lied", "band", "instrument", "gitarre", "klavier", "schlagzeug", "sänger", "konzert", "festival",
+        "kunst", "bild", "malerei", "skulptur", "künstler", "museum", "galerie", "ausstellung", "besucher", "öffnungszeiten","brille", "uhr", "ohrring", "kette", "ring", "kleidung", "schuh", "jacke", "hose", "rock", "hemd", "pulli", "mantel", "tasche", "geldbörse",
+         "telefon", "computer", "tablet", "fernseher", "radio", "kopfhörer", "kamera", "drucker", "scanner", "maus", "tastatur", "monitor", "usb-stick", "festplatte", "cd",
+         "garten", "rasen", "blume", "baum", "hecke", "strauch", "beet", "gartenhaus", "pool", "terrasse", "pflanze", "erde",
+         "auto", "fahrrad", "motorrad", "bus", "zug", "flugzeug", "schiff", "boot", "tankstelle", "straße", "brücke", "kreuzung", "ampel",
+         "parkplatz", "bank", "apotheke", "krankenhaus", "arzt", "krankenschwester", "patient", "sprechstunde", "rezept", "überweisung", "medizin", "medikament",
+         "hausarzt", "praxis", "operation", "facharzt"
+
+]
+
+# Globale Variable für das Galgenmännchen-Spiel
+hangman_games = {}
+
+# Befehl: Galgenmännchen-Spiel starten
+@client.command()
+async def start_hangman(ctx):
+    word = random.choice(words)
+    hangman_games[ctx.channel.id] = {
+        "word": word,
+        "display": ["_" for _ in word],
+        "attempts": 6,
+        "guessed_letters": set()
+    }
+    await ctx.send(f"Ein neues Galgenmännchen-Spiel hat begonnen! Du hast {hangman_games[ctx.channel.id]['attempts']} Versuche. Errate das Wort: {' '.join(hangman_games[ctx.channel.id]['display'])}")
+
+# Befehl: Buchstabe raten
+@client.command()
+async def guess_letter(ctx, letter: str):
+    game = hangman_games.get(ctx.channel.id)
+    if not game:
+        await ctx.send("Es läuft kein Galgenmännchen-Spiel. Starte ein neues Spiel mit !start_hangman.")
+        return
+
+    if len(letter) != 1 or not letter.isalpha():
+        await ctx.send("Bitte rate einen einzelnen Buchstaben.")
+        return
+
+    letter = letter.lower()
+
+    if letter in game["guessed_letters"]:
+        await ctx.send(f"Du hast den Buchstaben '{letter}' bereits geraten. Versuche einen anderen Buchstaben.")
+        return
+
+    game["guessed_letters"].add(letter)
+
+    if letter in game["word"]:
+        for i, char in enumerate(game["word"]):
+            if char == letter:
+                game["display"][i] = letter
+        await ctx.send(f"Richtig! Das Wort: {' '.join(game['display'])}")
+    else:
+        game["attempts"] -= 1
+        await ctx.send(f"Falsch! Du hast noch {game['attempts']} Versuche.")
+
+    if "_" not in game["display"]:
+        await ctx.send(f"Herzlichen Glückwunsch! Du hast das Wort '{game['word']}' erraten!")
+        del hangman_games[ctx.channel.id]
+    elif game["attempts"] == 0:
+        await ctx.send(f"Du hast verloren! Das Wort war '{game['word']}'.")
+        del hangman_games[ctx.channel.id]
+
+symbols = ['🍒', '🍋', '🍉', '⭐', '🔔', '🍇']
+
+@client.command()
+async def slot(ctx):
+    # Drehen der Slot-Maschine
+    result = [random.choice(symbols) for _ in range(3)]
+
+    # Erstelle die Nachricht mit dem Ergebnis
+    result_message = f"| {' | '.join(result)} |"
+
+    # Überprüfe, ob alle Symbole gleich sind
+    if result[0] == result[1] == result[2]:
+        await ctx.send(f"{result_message}\nDu hast gewonnen! 🎉")
+    else:
+        await ctx.send(f"{result_message}\nVersuch es nochmal! 😢")
+
+
+
+# Überprüfe alle 5 Minuten erneut
+
+# Thread für die Website-Überwachung starten
+website_thread = Thread(target=website_check)
+website_thread.start()
+
+
+
+
+
+
+
+
+
+# Starte den Bot mit dem Token
+
+
+
+
+
+# Befehl: Schere-Stein-Papier
+
+
+# Starte den Bot mit dem Token
+token = os.getenv('token')
+keep_alive()
+client.run(token)
+
+git add .
+git commit -m "Initial commit"
+git push origin main
